@@ -13,17 +13,18 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import com.mindorks.ridesharing.R
 import com.mindorks.ridesharing.utils.PermissionUtils
 import com.mindorks.ridesharing.utils.ViewUtils
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
-    private lateinit var mMap: GoogleMap
+    private lateinit var googleMap: GoogleMap
     private val REQUEST_LOCATION_PERMISSION = 1
     private val zoomLevel = 15f
+    private lateinit var currentLatLng: LatLng
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,10 +33,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-    }
-
-    override fun onMapReady(googleMap: GoogleMap) {
-        mMap = googleMap
     }
 
     override fun onRequestPermissionsResult(
@@ -87,6 +84,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    private fun moveCamera(latLng: LatLng) {
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng))
+    }
+
+    private fun enableMyLocationOnMap() {
+        googleMap.setPadding(0, ViewUtils.dpToPx(48f), 0, 0)
+        googleMap.isMyLocationEnabled = true
+    }
+
+    private fun animateCamera(latLng: LatLng){
+        val cameraPosition = CameraPosition.Builder().target(latLng).zoom(zoomLevel).build()
+        googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition))
+    }
+
     private fun setupCurrentLocationListener() {
         val fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         val locationRequest = LocationRequest().setInterval(2000).setFastestInterval(2000)
@@ -97,15 +108,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 override fun onLocationResult(locationResult: LocationResult) {
                     super.onLocationResult(locationResult)
                     for (location in locationResult.locations) {
-                        val lat = location.latitude
-                        val lng = location.longitude
-                        val latLng = LatLng(lat, lng)
-                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoomLevel))
-                        mMap.addMarker(MarkerOptions().position(latLng))
+                        currentLatLng = LatLng(location.latitude, location.longitude)
+                        enableMyLocationOnMap()
+                        moveCamera(currentLatLng)
+                        animateCamera(currentLatLng)
                     }
                 }
             },
             Looper.myLooper()
         )
+    }
+
+    override fun onMapReady(googleMap: GoogleMap) {
+        this.googleMap = googleMap
     }
 }
